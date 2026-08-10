@@ -65,6 +65,8 @@ JWT_SECRET=<long-random-secret>
 
 For the existing Nginx reverse proxy, leave `NEXT_PUBLIC_API_URL` unset or empty during the frontend build. Browser requests then use `/api`, which Nginx forwards to the internal ALB. No RDS schema change is required by the review edit/delete feature.
 
+The API only creates missing tables at startup. Apply future database changes through explicit migrations rather than Sequelize `alter: true`, which can repeatedly create MySQL indexes during PM2 restarts.
+
 ## Verification
 
 ```bash

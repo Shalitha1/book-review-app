@@ -32,10 +32,11 @@ async function startServer() {
     const Book = require("./models/Book")(sequelize);
     const Review = require("./models/Review")(sequelize);
 
-    // Sync database in the correct order (Users -> Books -> Reviews)
-    await User.sync({ alter: true });
-    await Book.sync({ alter: true });
-    await Review.sync({ alter: true });
+    // Create missing tables without altering production indexes on every restart.
+    // Schema changes should be handled by explicit migrations.
+    await User.sync();
+    await Book.sync();
+    await Review.sync();
 
     console.log("✅ Database schema updated successfully!");
 
