@@ -4,14 +4,16 @@ const cors = require("cors");
 const initializeDatabase = require("./config/db");
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 
 // Read allowed origins from environment variables
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : ["http://localhost:3000"];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((origin) => origin.trim()).filter(Boolean)
+  : [];
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
       callback(null, true); // Allow requests from valid origins
     } else {
       callback(new Error("CORS policy: Not allowed by server"));
@@ -19,12 +21,6 @@ app.use(cors({
   },
   credentials: true,
 }));
-
-// Debugging: Log incoming requests
-app.use((req, res, next) => {
-  console.log(`🛠 Incoming request from: ${req.headers.origin}`);
-  next();
-});
 
 async function startServer() {
   try {
@@ -89,8 +85,12 @@ async function startServer() {
       res.send("📚 Book Review API is running...");
     });
 
+    app.get("/health", (req, res) => {
+      res.json({ status: "healthy" });
+    });
+
     // Start the server
-    const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT || 3001;
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   } catch (error) {
     console.error("❌ Server startup failed:", error);

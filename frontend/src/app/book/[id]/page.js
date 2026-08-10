@@ -1,90 +1,168 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import Link from "next/link";
 import { useParams } from "next/navigation";
-import { fetchBookDetails, fetchReviews, submitReview } from "../../../services/api";
+import { useEffect, useMemo, useState } from "react";
 import { useUser } from "../../../context/UserContext";
+import {
+  deleteReview,
+  fetchBookDetails,
+  fetchReviews,
+  submitReview,
+  updateReview,
+} from "../../../services/api";
+import StarRating from "../../../components/StarRating";
+import { BookCover } from "../../page";
+
+function ReviewCard({ review, canManage, onEdit, onDelete }) {
+  return (
+    <article className="review-card">
+      <div className="review-card-head">
+        <div className="reviewer">
+          <span className="avatar avatar-large">{review.username?.charAt(0).toUpperCase()}</span>
+          <div><strong>{review.username}</strong><span>{new Date(review.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span></div>
+        </div>
+        <div className="review-rating" aria-label={`${review.rating} out of 5 stars`}>★ {Number(review.rating).toFixed(1)}</div>
+      </div>
+      <p>{review.comment}</p>
+      {canManage && (
+        <div className="review-actions">
+          <button type="button" onClick={() => onEdit(review)}>Edit</button>
+          <button type="button" className="danger-link" onClick={() => onDelete(review.id)}>Delete</button>
+        </div>
+      )}
+    </article>
+  );
+}
 
 export default function BookDetails() {
   const { id } = useParams();
-  const { user } = useUser();
+  const { user, authReady } = useUser();
   const [book, setBook] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [newReview, setNewReview] = useState("");
+  const [comment, setComment] = useState("");
   const [rating, setRating] = useState(5);
-  const [error, setError] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetchBookDetails(id).then(setBook).catch(err => console.error(err));
-    fetchReviews(id).then(setReviews).catch(err => console.error(err));
+    Promise.all([fetchBookDetails(id), fetchReviews(id)])
+      .then(([bookData, reviewData]) => {
+        setBook(bookData);
+        setReviews(reviewData);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
   }, [id]);
 
-  const handleReviewSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
+  const communityRating = useMemo(() => {
+    if (!reviews.length) return Number(book?.rating || 0);
+    return reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length;
+  }, [book, reviews]);
 
-    if (!user) {
-      setError("You must be logged in to post a review.");
-      return;
-    }
+  const resetForm = () => {
+    setComment("");
+    setRating(5);
+    setEditingId(null);
+  };
 
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    setSaving(true);
     try {
-      const token = localStorage.getItem("token");
-      const response = await submitReview({ bookId: id, comment: newReview, rating }, token);
-      setReviews([response.review, ...reviews]);
-      setNewReview("");
-    } catch (error) {
-      setError(error.response?.data?.message || "Failed to submit review.");
+      if (editingId) {
+        const data = await updateReview(editingId, { comment, rating });
+        setReviews((current) => current.map((item) => item.id === editingId ? data.review : item));
+      } else {
+        const data = await submitReview({ bookId: id, comment, rating });
+        setReviews((current) => [data.review, ...current]);
+      }
+      resetForm();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (!book) return <p className="text-center">Loading book details...</p>;
+  const startEditing = (review) => {
+    setEditingId(review.id);
+    setComment(review.comment);
+    setRating(Number(review.rating));
+    document.getElementById("review-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
+  const handleDelete = async (reviewId) => {
+    if (!window.confirm("Delete this review? This cannot be undone.")) return;
+    setError("");
+    try {
+      await deleteReview(reviewId);
+      setReviews((current) => current.filter((review) => review.id !== reviewId));
+      if (editingId === reviewId) resetForm();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  if (loading) return <div className="page-shell detail-loading"><div className="detail-cover-skeleton" /><div className="detail-copy-skeleton" /></div>;
+  if (!book) return <div className="page-shell state-card error-state"><strong>Book unavailable</strong><span>{error || "This title could not be found."}</span><Link href="/">Return to the library</Link></div>;
 
   return (
-    <div className="min-h-screen p-6">
-      <h1 className="text-3xl font-bold">{book.title}</h1>
-      <p className="text-gray-600">by {book.author}</p>
-      <p className="text-sm mt-2">⭐ {book.rating}/5</p>
+    <>
+      <section className="detail-hero">
+        <div className="page-shell">
+          <Link href="/" className="back-link">← Back to library</Link>
+          <div className="detail-grid">
+            <BookCover book={book} large />
+            <div className="detail-copy">
+              <span className="eyebrow">Reader favourite</span>
+              <h1>{book.title}</h1>
+              <p className="detail-author">by {book.author}</p>
+              <div className="rating-summary">
+                <strong>{communityRating.toFixed(1)}</strong>
+                <div><span>★★★★★</span><small>{reviews.length} {reviews.length === 1 ? "review" : "reviews"}</small></div>
+              </div>
+              <p className="detail-intro">What makes a book memorable is the conversation it starts. Read what the community thinks, then add your own perspective.</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      <h2 className="text-2xl mt-6">Reviews</h2>
-      {reviews.length === 0 ? (
-        <p>No reviews yet.</p>
-      ) : (
-        <ul className="mt-2">
-          {reviews.map((review, index) => (
-            <li key={index} className="border p-2 my-2 rounded">
-              <p className="font-bold">{review.username}</p>
-              <p>{review.comment}</p>
-              <p className="text-sm">⭐ {review.rating}/5</p>
-            </li>
-          ))}
-        </ul>
-      )}
+      <section className="page-shell reviews-layout">
+        <div>
+          <div className="reviews-heading"><div><span className="eyebrow">From the community</span><h2>Reader reviews</h2></div><span>{reviews.length} total</span></div>
+          {reviews.length ? reviews.map((review) => (
+            <ReviewCard
+              key={review.id}
+              review={review}
+              canManage={Boolean(user && Number(user.id) === Number(review.userId))}
+              onEdit={startEditing}
+              onDelete={handleDelete}
+            />
+          )) : <div className="state-card"><strong>Be the first to review</strong><span>Your perspective could help another reader choose their next book.</span></div>}
+        </div>
 
-      {user && (
-        <form onSubmit={handleReviewSubmit} className="mt-4 p-4 border rounded">
-          <h3 className="text-xl">Add a Review</h3>
-          {error && <p className="text-red-500">{error}</p>}
-          <textarea
-            className="w-full p-2 border rounded mt-2"
-            placeholder="Write your review..."
-            value={newReview}
-            onChange={(e) => setNewReview(e.target.value)}
-            required
-          />
-          <select 
-            className="w-full p-2 border rounded mt-2"
-            value={rating}
-            onChange={(e) => setRating(e.target.value)}
-          >
-            {[1, 2, 3, 4, 5].map((num) => (
-              <option key={num} value={num}>{num} ⭐</option>
-            ))}
-          </select>
-          <button className="mt-2 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-            Submit Review
-          </button>
-        </form>
-      )}
-    </div>
+        <aside className="review-panel" id="review-form">
+          {!authReady ? <div className="form-skeleton" /> : user ? (
+            <form onSubmit={handleSubmit}>
+              <span className="eyebrow">{editingId ? "Refine your thoughts" : "Join the conversation"}</span>
+              <h2>{editingId ? "Edit your review" : "Share your review"}</h2>
+              <StarRating value={rating} onChange={setRating} />
+              <label className="field-label" htmlFor="review">Your review</label>
+              <textarea id="review" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="What stayed with you?" minLength="3" maxLength="1500" required />
+              <div className="form-meta"><span>{comment.length}/1500</span></div>
+              {error && <p className="form-error" role="alert">{error}</p>}
+              <button className="primary-button full-button" disabled={saving}>{saving ? "Saving..." : editingId ? "Save changes" : "Publish review"}</button>
+              {editingId && <button type="button" className="secondary-button full-button" onClick={resetForm}>Cancel editing</button>}
+            </form>
+          ) : (
+            <div className="sign-in-prompt"><span className="prompt-icon">✦</span><h2>Have something to say?</h2><p>Sign in to share your review with the community.</p><Link href={`/login?next=/book/${id}`} className="primary-button full-button">Sign in to review</Link><Link href="/register" className="text-link">Create a free account</Link></div>
+          )}
+        </aside>
+      </section>
+    </>
   );
 }

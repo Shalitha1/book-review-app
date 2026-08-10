@@ -1,17 +1,23 @@
 "use client";
-import { createContext, useContext, useState, useEffect } from "react";
 
-const UserContext = createContext();
+import { createContext, useContext, useEffect, useState } from "react";
+
+const UserContext = createContext(null);
 
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("user");
-
-    if (token && storedUser) {
-      setUser(JSON.parse(storedUser));
+    try {
+      const token = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("user");
+      if (token && storedUser) setUser(JSON.parse(storedUser));
+    } catch {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    } finally {
+      setAuthReady(true);
     }
   }, []);
 
@@ -28,10 +34,14 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, login, logout }}>
+    <UserContext.Provider value={{ user, authReady, login, logout }}>
       {children}
     </UserContext.Provider>
   );
 };
 
-export const useUser = () => useContext(UserContext);
+export const useUser = () => {
+  const context = useContext(UserContext);
+  if (!context) throw new Error("useUser must be used inside UserProvider");
+  return context;
+};

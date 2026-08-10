@@ -10,8 +10,14 @@ module.exports = (sequelize) => {
       try {
         const { name, email, password } = req.body;
 
+        if (!name?.trim() || !email?.trim() || !password || password.length < 8) {
+          return res.status(400).json({ message: "Name, valid email, and an 8-character password are required" });
+        }
+
+        const normalizedEmail = email.trim().toLowerCase();
+
         // Check if user already exists
-        const existingUser = await User.findOne({ where: { email } });
+        const existingUser = await User.findOne({ where: { email: normalizedEmail } });
         if (existingUser) {
           return res.status(400).json({ message: "User already exists" });
         }
@@ -20,11 +26,12 @@ module.exports = (sequelize) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // Create new user
-        const newUser = await User.create({ name, email, password: hashedPassword });
+        await User.create({ name: name.trim(), email: normalizedEmail, password: hashedPassword });
 
         res.status(201).json({ message: "User registered successfully" });
       } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+        console.error("Unable to register user:", error);
+        res.status(500).json({ message: "Server error while registering user" });
       }
     },
 
@@ -32,8 +39,12 @@ module.exports = (sequelize) => {
       try {
         const { email, password } = req.body;
 
+        if (!email?.trim() || !password) {
+          return res.status(400).json({ message: "Email and password are required" });
+        }
+
         // Check if user exists
-        const user = await User.findOne({ where: { email } });
+        const user = await User.findOne({ where: { email: email.trim().toLowerCase() } });
         if (!user) {
           return res.status(400).json({ message: "Invalid email or password" });
         }
@@ -49,7 +60,8 @@ module.exports = (sequelize) => {
 
         res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
       } catch (error) {
-        res.status(500).json({ message: "Server error", error });
+        console.error("Unable to sign in user:", error);
+        res.status(500).json({ message: "Server error while signing in" });
       }
     }
   };
