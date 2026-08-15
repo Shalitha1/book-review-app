@@ -81,3 +81,10 @@ npm run check
 ## Deployment safety
 
 Deploy into a new release directory first. Preserve the current `.env` files, build the frontend, install backend production dependencies, test both health endpoints, and only then restart the existing PM2 processes. Keep the previous directory until the public ALB and internal ALB health checks pass.
+
+## Backend CI/CD learning path
+
+The project intentionally builds its backend automation in two stages:
+
+1. **Continuous Integration:** `.github/workflows/backend-ci.yml` installs the exact backend dependencies and validates the JavaScript on pushes and pull requests that affect backend files.
+2. **Continuous Deployment:** added only after CI passes and the deployment process is understood; it will deploy through the Web EC2 jump host to the private App EC2 and verify `/health` before completing.
