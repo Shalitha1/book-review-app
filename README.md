@@ -86,5 +86,5 @@ Deploy into a new release directory first. Preserve the current `.env` files, bu
 
 The project intentionally builds its backend automation in two stages:
 
-1. **Continuous Integration:** `.github/workflows/backend-ci.yml` installs the exact backend dependencies and validates the JavaScript on pushes and pull requests that affect backend files.
+1. **Continuous Integration:** `.github/workflows/backend-ci.yml` installs the exact backend dependencies, validates the JavaScript, and runs isolated authentication middleware tests on pushes and pull requests that affect backend files.
 2. **Continuous Deployment:** added only after CI passes and the deployment process is understood; it will deploy through the Web EC2 jump host to the private App EC2 and verify `/health` before completing.
