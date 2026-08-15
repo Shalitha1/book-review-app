@@ -43,3 +43,6 @@ jobs:
 
       - name: Validate backend JavaScript
         run: npm run check
+
+      - name: Run backend tests
+        run: npm test
