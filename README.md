@@ -81,15 +81,3 @@ npm run check
 ## Deployment safety
 
 Deploy into a new release directory first. Preserve the current `.env` files, build the frontend, install backend production dependencies, test both health endpoints, and only then restart the existing PM2 processes. Keep the previous directory until the public ALB and internal ALB health checks pass.
-
-## CI/CD
-
-The GitHub Actions workflow in `.github/workflows/ci-cd.yml` runs backend checks and a frontend lint/build for pull requests and pushes. Successful pushes to `main` deploy the backend through the Web EC2 jump host, deploy the frontend, and smoke-test the public ALB.
-
-Create a GitHub environment named `production` and add this environment secret:
-
-- `WEB_EC2_SSH_KEY`: the complete private key used to connect to both EC2 instances
-
-Under repository **Settings → Secrets and variables → Actions → Variables**, add `ENABLE_DEPLOYMENT` with the value `true` after the SSH secret is configured. Until then, pushes run CI while the production deployment job remains disabled.
-
-Never commit the private key. Production deployments are serialized through the workflow concurrency group.
