@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: book-review-config
+  namespace: book-review
+
+data:
+  MYSQL_DATABASE: book_review_db
+  MYSQL_USER: admin
+  MYSQL_PORT: "3306"
+
+  DB_HOST: mysql
+  DB_SSL: "false"
+
+  BACKEND_PORT: "3010"
+
+  ALLOWED_ORIGINS: "http://book-review.test"
