@@ -58,9 +58,9 @@ PORT=3001
 DB_HOST=<rds-endpoint>
 DB_PORT=3306
 DB_NAME=bookreview
-DB_USER=<database-user>
-DB_PASS=<database-password>
-JWT_SECRET=<long-random-secret>
+DB_USER=#
+DB_PASS=#
+JWT_SECRET=#
 ```
 
 For the existing Nginx reverse proxy, leave `NEXT_PUBLIC_API_URL` unset or empty during the frontend build. Browser requests then use `/api`, which Nginx forwards to the internal ALB. No RDS schema change is required by the review edit/delete feature.
