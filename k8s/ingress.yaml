@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: book-review-ingress
+  namespace: book-review
+
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+spec:
+
+  ingressClassName: nginx
+
+  rules:
+
+    - host: book-review.test
+
+      http:
+
+        paths:
+
+          - path: /
+
+            pathType: Prefix
+
+            backend:
+
+              service:
+
+                name: frontend
+
+                port:
+
+                  number: 80
